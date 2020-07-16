@@ -51,6 +51,7 @@ end
 def follow_bonjour
   client = login_twitter
   client.search("#bonjour_monde", since: "2020-01-01").take(50).each_with_index do |tweet, i|
+    puts "--"
     display_tweet(tweet)
     if tweet.user.name != "Mathieu Voland"
       client.follow(tweet.user)
@@ -62,6 +63,7 @@ end
 def follow_THP
   client = login_twitter
   client.search("@The_Hacking_Pro", since: "2020-01-01").take(50).each_with_index do |tweet, i|
+    puts "--"
     display_tweet(tweet)
     if tweet.user.name != "Mathieu Voland"
       if client.friendship?(client.user, tweet.user)
@@ -76,10 +78,8 @@ end
 
 def test
   client = login_twitter
-  client.search("from:Kathatouille", since: "2020-01-01").take(50).each_with_index do |tweet, i|
-    client.unfavorite(tweet)
+  client.search("#bonjour_monde @The_Hacking_Pro", since: "2020-01-01").take(50).each_with_index do |tweet, i|
     display_tweet(tweet)
-    puts ">> UNLIKED"
   end
 end
 
@@ -92,18 +92,28 @@ def stream_bonjour_monde
     config.access_token_secret = ENV["TWITTER_ACCESS_TOKEN_SECRET"]
   end
   client = login_twitter
-  streamer.filter({ track: "#bonjour_monde" }) do |tweet|
-    display_tweet(tweet)
-    if tweet.user.name != "Mathieu Voland"
-      if client.friendship?(client.user, tweet.user)
-        puts ">> Already following"
-      else
-        client.follow(tweet.user)
-        puts ">> NOW FOLLOWING: #{tweet.user.name}"
+  loop do
+    begin
+      streamer.filter({ track: "#bonjour_monde, @The_Hacking_Pro" }) do |tweet|
+        if tweet.is_a?(Twitter::Tweet)
+          display_tweet(tweet)
+          if client.friendship?(client.user, tweet.user) || tweet.user.name == "Mathieu Voland"
+            print "."
+          else
+            client.follow(tweet.user)
+            print " NOW FOLLOWING: #{tweet.user.name}"
+          end
+          client.retweet(tweet)
+          print " RT"
+          client.favorite(tweet)
+          puts " LIKED"
+        end
       end
+    rescue => exception
+      puts "=" * 80
+      puts "DISCONNECTED #{exception.message}"
+      puts "=" * 80
     end
-    client.favorite(tweet)
-    puts ">> LIKED"
   end
 end
 
